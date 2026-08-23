@@ -6,7 +6,23 @@
 
 触发按钮打开一个从输入框向上生长、保持在视口内的弹层面板（输入框位于屏幕底部，因此面板占据其上方空间，过高时在内部滚动）。面板列出每一个非 group 的 Loader entry，分为「插件」和用户标记的「常用插件」两组，并带按名字筛选。每行有启用/停用开关和「常用」标记按钮。两个写入都走 `pluginInventory` 远程服务：`setEnabled` 把一个按 id 定向的 `disabled` 补丁写进 profile 的用户 patch 层（`cordis.patch.yml`），由启动器的 `watchUserPatches` 热重载，因此切换无需重启即可生效且重启后仍保留；`setFavorite` 写入 `plugin-favorites` 设置命名空间。面板只持有视图状态（打开、分组、查询、乐观行）——没有任何客户端业务状态。
 
-> **⚠️ 运行时要求。** `conversation.input.plugins` 席位与 `pluginInventory.setEnabled`/`setFavorite` 远程方法**不在任何已发布的 dsh 中**（截至 0.1.0-rc.8 与 0.1.1-rc.2）。本插件只能在包含该功能的 dsh 构建上运行（上游 `feat/plugin-controls` 拉取请求）——要么带它的源码构建，要么等待未来发布。在普通发布版 dsh 上安装会在加载时报错（席位未声明）。安装前请先确认上游 PR 状态。
+> **⚠️ 运行时要求。** `conversation.input.plugins` 席位与 `pluginInventory.setEnabled`/`setFavorite` 远程方法**不在任何已发布的 dsh 中**（截至 0.1.0-rc.8 与 0.1.1-rc.2）。本插件只能在包含该功能的 dsh 构建上运行——要么带它的源码构建，要么等待未来发布。在普通发布版 dsh 上安装会在加载时报错（席位未声明）。安装前请先确认上游 PR 状态。
+>
+> **完整改动集（运行时 + 本插件）在 fork 分支**
+> [`feat/plugin-controls`](https://github.com/fishOfOUC/deepseek-harness/tree/feat/plugin-controls)
+> 上（`fishOfOUC/deepseek-harness`，47 个文件：ui-conversation 席位、pluginInventory
+> `setEnabled`/`setFavorite`、web-app roster 行、本包、测试、Agent Notes）。
+> 有 deepseek-harness **源码 checkout** 的机器可以直接拉取应用：
+>
+> ```sh
+> git remote add fork https://github.com/fishOfOUC/deepseek-harness.git
+> git fetch fork feat/plugin-controls
+> git checkout -b feat/plugin-controls fork/feat/plugin-controls   # 或: git merge fork/feat/plugin-controls
+> pnpm install && npm run build
+> node --import tsx/esm apps/cli/src/bin.ts web --port 3188 --no-open   # 从源码运行,勿用 npm 全局 dsh
+> ```
+>
+> 上游拉取请求（deepseek-ai/deepseek-harness ← `fishOfOUC:feat/plugin-controls`）是未来发布时内置该功能的路径。
 
 ## 截图
 

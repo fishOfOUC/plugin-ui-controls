@@ -2,9 +2,11 @@
 
 English | [中文](README.zh.md)
 
-Plugin control panel, a browser surface plugin over the [`@deepseek-ai/dsh-host-plugin-inventory`](../../host/plugin-inventory/README.md) Remote. The browser half occupies the conversation-declared `conversation.input.plugins` single seat (immediately right of the access-mode control in the composer tool row); the node half is an empty apply (the roster row).
+Plugin control panel, a browser surface plugin over the `@deepseek-ai/dsh-host-plugin-inventory` Remote. The browser half occupies the conversation-declared `conversation.input.plugins` single seat (immediately right of the access-mode control in the composer tool row); the node half is an empty apply (the roster row).
 
 The trigger opens a portal panel that grows upward from the composer and stays inside the viewport (the composer sits at the bottom of the screen, so the panel owns the space above it and scrolls internally when tall). It lists every non-group Loader entry, grouped into all plugins and a user-marked favorites subset, with a name filter. Each row carries an enable/disable switch and a favorite mark button. Both writes ride the `pluginInventory` Remote: `setEnabled` writes an id-targeted `disabled` patch into the profile's user patch layer (`cordis.patch.yml`), which the launcher's `watchUserPatches` hot-reloads so the toggle takes effect without a restart and survives one; `setFavorite` writes the `plugin-favorites` Settings namespace. The panel holds only view state (open, group, query, optimistic rows) — no client-side business state.
+
+> **⚠️ Runtime requirement.** The `conversation.input.plugins` seat and the `pluginInventory.setEnabled`/`setFavorite` Remotes are **not part of any released dsh** (as of 0.1.0-rc.8 and 0.1.1-rc.2). This plugin only runs on a dsh build that ships the plugin-control feature (the upstream `feat/plugin-controls` pull request) — either a source build with it or a future release. Installing it on a stock released dsh will fail at load (the seat is undeclared). Check the upstream PR status before installing.
 
 ## Screenshot
 
@@ -12,31 +14,24 @@ The trigger opens a portal panel that grows upward from the composer and stays i
 
 ## Installation
 
-In the `deepseek-harness` repository this package is already a row of `packages/bundle/web-app/cordis.patch.yml`, so a `web` deployment gets the panel from the app build with nothing else to do.
+**In the `deepseek-harness` repository** this package is a row of `packages/bundle/web-app/cordis.patch.yml`, so a `web` deployment gets the panel from the app build with nothing else to do (once the feature lands upstream).
 
-To install this package standalone into a self-managed profile, add the row through the profile's user patch layer — never the profile root `cordis.yml`, which the launcher rewrites to an empty list on every boot:
+**Standalone via GitHub** (the package ships `lib/` and its own `cordis.patch.yml`, so the row auto-inserts — no manual patch edit):
 
-1. Make the package resolvable by the profile's Loader:
+```sh
+dsh plugin --profile web add github:fishOfOUC/plugin-ui-controls
+```
 
-   ```sh
-   dsh plugin --profile web add ~/code/plugin-ui-controls
-   ```
+or add it to the profile's `package.json` dependencies as `"@deepseek-ai/dsh-client-ui-plugin-controls": "github:fishOfOUC/plugin-ui-controls"` and run `pnpm install` in the profile. The bundle patch inserts the `ui-plugin-controls` row into the profile's composition automatically.
 
-   The `declares no dsh.bundle` warning is expected: this is a client UI plugin (`dsh.client`, not a patch-layer bundle), so it installs as a plain dependency and you add the row yourself in the next step.
+**Build from source** (optional — `lib/` is committed, so installs do not need this):
 
-2. Insert the row into `~/.dsh/profiles/web/cordis.patch.yml` with an `insert` list — a bare `- id:` line is an id-targeted override, not a new row:
+```sh
+pnpm install
+pnpm build     # tsdown: lib/index.mjs + lib/invariant.mjs (node half), lib/client.js (browser half)
+```
 
-   ```yml
-   - insert:
-       - id: ui-plugin-controls
-         name: '@deepseek-ai/dsh-client-ui-plugin-controls'
-   ```
-
-3. Restart `dsh web` and refresh the browser.
-
-A stock `web` profile already composes the row's dependencies — `@deepseek-ai/dsh-client-ui-conversation` (declares the `conversation.input.plugins` seat), `@deepseek-ai/dsh-api-remotes`, `@deepseek-ai/dsh-host-plugin-inventory` (the `list`/`setEnabled`/`setFavorite` Remotes), and `@deepseek-ai/dsh-client-locale` — so only the one `insert` is needed. A minimal or custom composition must provide those too.
-
-> The package's `peerDependencies` use the in-repository `workspace:^` protocol; they are type-only for this client half. For a standalone npm publish, re-scope them to resolvable version ranges first.
+The peer dependencies are resolvable version ranges; at runtime the host supplies them (this is a `dsh.client` plugin — the browser half injects `@deepseek-ai/dsh-client-runtime`, `@deepseek-ai/dsh-client-ui-slots`, `@deepseek-ai/dsh-client-ui-conversation` and friends from the web app's module registry). `tsc --noEmit` typechecking additionally needs the un-released seat/favorite/Remote types, so it is not part of `pnpm check` until the feature ships.
 
 ## Model Experience
 

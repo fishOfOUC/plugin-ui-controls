@@ -24,6 +24,17 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
+// Type bridge for standalone installs: the `conversation.input.plugins` seat is
+// not declared by any released `ui-conversation`, so this merge lets the panel
+// typecheck against published packages. Remove once a dsh release ships the
+// seat (the upstream plugin-control feature) — the runtime slot still has to
+// exist, so this is a type-only shim, never a substitute for the runtime seat.
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface SlotMap {
+    'conversation.input.plugins': { kind: 'single'; scope: 'session' }
+  }
+}
+
 /** Required services (cordis fiber inject). */
 export const inject = ['slots', 'locale', 'remote', 'remote.pluginInventory']
 

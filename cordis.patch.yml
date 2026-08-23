@@ -1,0 +1,6 @@
+# Plugin-control row for the dsh-web-app client roster. The bundle patch is
+# applied to the profile when this package is installed, so the composer
+# plugin-control panel loads with no manual patch edit.
+- insert:
+    - id: ui-plugin-controls
+      name: '@deepseek-ai/dsh-client-ui-plugin-controls'

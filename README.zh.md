@@ -2,9 +2,11 @@
 
 [English](README.md) | 中文
 
-插件控制面板，一个基于 [`@deepseek-ai/dsh-host-plugin-inventory`](../../host/plugin-inventory/README.zh.md) 远程服务的浏览器表面插件。浏览器半边占据会话声明的 `conversation.input.plugins` 单槽位（紧挨输入框工具行的权限控制右侧）；节点半边是空 apply（roster 行）。
+插件控制面板，一个基于 `@deepseek-ai/dsh-host-plugin-inventory` 远程服务的浏览器表面插件。浏览器半边占据会话声明的 `conversation.input.plugins` 单槽位（紧挨输入框工具行的权限控制右侧）；节点半边是空 apply（roster 行）。
 
 触发按钮打开一个从输入框向上生长、保持在视口内的弹层面板（输入框位于屏幕底部，因此面板占据其上方空间，过高时在内部滚动）。面板列出每一个非 group 的 Loader entry，分为「插件」和用户标记的「常用插件」两组，并带按名字筛选。每行有启用/停用开关和「常用」标记按钮。两个写入都走 `pluginInventory` 远程服务：`setEnabled` 把一个按 id 定向的 `disabled` 补丁写进 profile 的用户 patch 层（`cordis.patch.yml`），由启动器的 `watchUserPatches` 热重载，因此切换无需重启即可生效且重启后仍保留；`setFavorite` 写入 `plugin-favorites` 设置命名空间。面板只持有视图状态（打开、分组、查询、乐观行）——没有任何客户端业务状态。
+
+> **⚠️ 运行时要求。** `conversation.input.plugins` 席位与 `pluginInventory.setEnabled`/`setFavorite` 远程方法**不在任何已发布的 dsh 中**（截至 0.1.0-rc.8 与 0.1.1-rc.2）。本插件只能在包含该功能的 dsh 构建上运行（上游 `feat/plugin-controls` 拉取请求）——要么带它的源码构建，要么等待未来发布。在普通发布版 dsh 上安装会在加载时报错（席位未声明）。安装前请先确认上游 PR 状态。
 
 ## 截图
 
@@ -12,35 +14,28 @@
 
 ## 安装
 
-在 `deepseek-harness` 仓库中，本包已经是 `packages/bundle/web-app/cordis.patch.yml` 里的一行，因此 `web` 部署经应用构建后即获得该面板，无需任何额外安装。
+**在 `deepseek-harness` 仓库内**，本包是 `packages/bundle/web-app/cordis.patch.yml` 里的一行，因此 `web` 部署经应用构建后即获得该面板（一旦该功能合入上游），无需任何额外安装。
 
-要把本包作为独立插件安装进自建的 profile，请通过 profile 的用户 patch 层添加该行——**不要**改 profile 根目录的 `cordis.yml`，启动器每次 boot 都会把它重写为空列表：
+**通过 GitHub 独立安装**（本包自带 `lib/` 与自己的 `cordis.patch.yml`，安装后自动插入 roster 行，无需手动改 patch）：
 
-1. 让 profile 的 Loader 能解析到这个包：
+```sh
+dsh plugin --profile web add github:fishOfOUC/plugin-ui-controls
+```
 
-   ```sh
-   dsh plugin --profile web add ~/code/plugin-ui-controls
-   ```
+或把 `"@deepseek-ai/dsh-client-ui-plugin-controls": "github:fishOfOUC/plugin-ui-controls"` 加进 profile 的 `package.json` 依赖并执行 `pnpm install`。bundle patch 会自动把 `ui-plugin-controls` 行插入 profile 的组合。
 
-   `declares no dsh.bundle` 警告是正常的：这是客户端 UI 插件（`dsh.client`，不是 patch 层 bundle），因此它作为普通依赖安装，下一步由你自己组合这一行。
+**从源码构建**（可选——`lib/` 已提交，安装无需构建）：
 
-2. 用 `insert` 列表把该行插入 `~/.dsh/profiles/web/cordis.patch.yml`——裸 `- id:` 行是 id 定向覆盖，不是新增行：
+```sh
+pnpm install
+pnpm build     # tsdown: lib/index.mjs + lib/invariant.mjs(节点半边), lib/client.js(浏览器半边)
+```
 
-   ```yml
-   - insert:
-       - id: ui-plugin-controls
-         name: '@deepseek-ai/dsh-client-ui-plugin-controls'
-   ```
-
-3. 重启 `dsh web` 并刷新浏览器。
-
-标准 `web` profile 已经组合了该行所需的依赖——`@deepseek-ai/dsh-client-ui-conversation`（声明 `conversation.input.plugins` 席位）、`@deepseek-ai/dsh-api-remotes`、`@deepseek-ai/dsh-host-plugin-inventory`（提供 `list`/`setEnabled`/`setFavorite` 远程）和 `@deepseek-ai/dsh-client-locale`——所以只需这一条 `insert`。极简或自定义组合则需自行提供它们。
-
-> 本包的 `peerDependencies` 使用仓库内的 `workspace:^` 协议，且对这个客户端半边而言仅用于类型。若要发布到 npm 独立安装，请先把它们改成可解析的版本范围。
+peer 依赖使用可解析的版本范围；运行时由宿主提供（这是 `dsh.client` 插件——浏览器半边从 web 应用的模块注册表注入 `@deepseek-ai/dsh-client-runtime`、`@deepseek-ai/dsh-client-ui-slots`、`@deepseek-ai/dsh-client-ui-conversation` 等）。`tsc --noEmit` 类型检查还需要未发布的席位/favorite/Remote 类型，因此在功能发布前不纳入 `pnpm check`。
 
 ## 模型体验
 
-Indirectly, through the plugin-enablement toggles the panel drives; each toggled plugin owns what reaches the model.
+间接的——通过面板驱动的插件启用开关；每个被切换的插件决定什么内容到达模型。
 
 #### KV Cache effect
 
